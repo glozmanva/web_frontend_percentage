@@ -514,3 +514,35 @@ a {
 @media (max-width: 430px) { #root { width: 100%; } }
 .feed-next { border: 0; padding: 0; background: transparent; cursor: pointer; }
 .nav-item[aria-disabled=true]:hover { color: var(--text-secondary); }
+
+/* LR6: forms, request states and authorized actions. */
+.app-content { height: 100%; }
+.app { min-height: min(650px, 100svh); }
+fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+legend.filter-title { padding: 0; }
+button:disabled { cursor: default; opacity: .55; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.nav-button, .like-button { padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer; }
+.liked, .like-button.liked .feed-heart { color: var(--accent); }
+.like-button:disabled { opacity: 1; }
+.delete-button { width: calc(100% - 12px); margin: 10px 6px 4px; padding: 8px; border: 1px solid #ae6673; border-radius: 10px; background: transparent; color: #ffc3cc; cursor: pointer; font-size: 12px; }
+.notice { margin: 0 0 16px; padding: 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
+.notice p { margin: 0; }
+.mock-notice { background: #303044; color: #dddafa; }
+.error-notice { background: #432b34; color: #ffd5db; }
+.feed-notice { position: absolute; z-index: 7; top: 15px; left: 15px; right: 15px; }
+.global-notice { position: absolute; z-index: 30; top: 10px; left: 10px; right: 10px; display: flex; align-items: flex-start; gap: 10px; padding: 12px; border: 1px solid #ae6673; border-radius: 12px; background: #432b34; color: #ffd5db; font-size: 13px; line-height: 1.5; box-shadow: 0 4px 20px #0008; }
+.global-notice button { margin-left: auto; border: 0; background: transparent; color: inherit; font-size: 20px; cursor: pointer; }
+.page-intro { margin: 0 0 22px; color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+.editor-form label { display: block; margin: 0 0 18px; font-size: 14px; line-height: 1.5; }
+.editor-form input, .editor-form textarea { display: block; width: 100%; margin-top: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--input); color: var(--text); color-scheme: dark; }
+.editor-form input[type=file] { padding: 9px; font-size: 12px; }
+.editor-form input::file-selector-button { margin: 0 10px 0 0; padding: 8px; border: 0; border-radius: 7px; background: var(--surface-hover); color: var(--text); cursor: pointer; }
+.editor-form textarea { resize: vertical; }
+.text-button { padding: 8px 0; border: 0; background: transparent; color: var(--accent); cursor: pointer; font-size: 14px; }
+.media-preview { display: block; width: 100%; height: 190px; margin: 0 0 18px; border: 1px solid var(--border); border-radius: 14px; object-fit: contain; background: #19191c; }
+.delete-draft { width: 100%; margin: 16px 0 0; font-size: 14px; }
+.busy-overlay { position: absolute; inset: 0; z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; border-radius: inherit; background: #121214c9; color: var(--text); backdrop-filter: blur(2px); font-size: 14px; cursor: wait; }
+.loading-spinner { width: 38px; height: 38px; border: 3px solid #ffffff30; border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .loading-spinner { animation-duration: 2s; } }

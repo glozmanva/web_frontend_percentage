@@ -1,0 +1,1149 @@
+{
+    "schemes": [
+        "http",
+        "https"
+    ],
+    "swagger": "2.0",
+    "info": {
+        "description": "REST API расчётных месяцев. Публичное чтение и операции создателя по Bearer JWT. Выход отзывает JWT через blacklist Redis.",
+        "title": "Deposit Month API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/api",
+    "paths": {
+        "/deposit-months": {
+            "get": {
+                "description": "Фильтрация включительно по числу дней; min_days_count не должен превышать max_days_count. Чтение публичное; при наличии Bearer JWT персональные поля относятся к вошедшему пользователю, иначе равны 0.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deposit-months"
+                ],
+                "summary": "Список опубликованных расчётных месяцев",
+                "operationId": "getDepositMonths",
+                "parameters": [
+                    {
+                        "maximum": 31,
+                        "minimum": 28,
+                        "type": "integer",
+                        "default": 28,
+                        "description": "Минимальное число дней",
+                        "name": "min_days_count",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 31,
+                        "minimum": 28,
+                        "type": "integer",
+                        "default": 31,
+                        "description": "Максимальное число дней",
+                        "name": "max_days_count",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Необязательный Bearer \u003caccess_token\u003e для персональных полей",
+                        "name": "Authorization",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Опубликованные записи; пустой список возвращается как []",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/dto.DepositMonthWithLikesResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректные фильтры",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка репозитория",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "У вошедшего пользователя может быть один черновик. Все три поля обязательны. Тип файлов проверяется по содержимому.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deposit-months"
+                ],
+                "summary": "Создать черновик с изображением и видео",
+                "operationId": "createDepositMonthDraft",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Название расчётного месяца",
+                        "name": "name",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Изображение: JPEG, PNG, GIF или WebP",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Видео: MP4, WebM или QuickTime",
+                        "name": "video",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Созданный черновик с URL файлов в MinIO",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DepositMonthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректная форма, отсутствующее поле или неподдерживаемый файл",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Токен отсутствует, истёк или отозван",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "У пользователя уже есть черновик",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка PostgreSQL или MinIO",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Redis недоступен",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/deposit-months/draft": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает черновик вошедшего пользователя.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deposit-months"
+                ],
+                "summary": "Черновик текущего пользователя",
+                "operationId": "getDepositMonthDraft",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DepositMonthResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Токен отсутствует, истёк или отозван",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Черновик не найден",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка репозитория",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Redis недоступен",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Публикует черновик вошедшего пользователя и заполняет formed_at.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deposit-months"
+                ],
+                "summary": "Заполнить и опубликовать черновик",
+                "operationId": "publishDepositMonthDraft",
+                "parameters": [
+                    {
+                        "description": "Поля для публикации",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.PublishDepositMonthRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DepositMonthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный JSON или значения полей",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Токен отсутствует, истёк или отозван",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Черновик не найден",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка репозитория",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Redis недоступен",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/deposit-months/feed": {
+            "get": {
+                "description": "Без id возвращается первая опубликованная запись. С id и next=false возвращается указанная запись, с next=true — следующая с переходом к первой после последней.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deposit-months"
+                ],
+                "summary": "Запись ленты",
+                "operationId": "getDepositMonthFeed",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "example": 1,
+                        "description": "Положительный ID записи; без параметра — первая запись",
+                        "name": "id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "false — текущая запись; true — следующая",
+                        "name": "next",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Необязательный Bearer \u003caccess_token\u003e для персональных полей",
+                        "name": "Authorization",
+                        "in": "header"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DepositMonthWithLikesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный id или next",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Опубликованная запись не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка репозитория",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/deposit-months/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Устанавливает status=deleted для записи вошедшего пользователя.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deposit-months"
+                ],
+                "summary": "Логически удалить свой черновик или опубликованную запись",
+                "operationId": "deleteDepositMonth",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Положительный ID записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DeleteDepositMonthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный id",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Токен отсутствует, истёк или отозван",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Запись не найдена, уже удалена или принадлежит другому пользователю",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка репозитория",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Redis недоступен",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/deposit-months/{id}/like": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "liked=1 устанавливает лайк вошедшего пользователя, liked=0 снимает. Повторная установка не создаёт дубликат.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deposit-months"
+                ],
+                "summary": "Установить или снять лайк",
+                "operationId": "setDepositMonthLike",
+                "parameters": [
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Положительный ID опубликованной записи",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Состояние лайка",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LikeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.LikeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный id, JSON или liked (только 0/1)",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Токен отсутствует, истёк или отозван",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Недостаточно прав",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Опубликованная запись не найдена",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка репозитория",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Redis недоступен",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "post": {
+                "description": "Создаёт пользователя с ролью buyer и bcrypt-хешем пароля. После входа доступны операции создателя. Поле role клиента игнорируется. birth_date имеет формат YYYY-MM-DD; пароль не включается в ответ.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Зарегистрировать пользователя",
+                "operationId": "registerUser",
+                "parameters": [
+                    {
+                        "description": "Данные пользователя",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RegisterUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный JSON, отсутствующие поля или неверный формат даты",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email уже зарегистрирован",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Ошибка репозитория",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/authentication": {
+            "post": {
+                "description": "Проверяет bcrypt-хеш и выдаёт JWT access/refresh, user_id, role и is_moderator для интерфейса. Сроки указаны в секундах. Redis хранит идентификатор refresh для одноразовой ротации; access проверяется по подписи, сроку и blacklist.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Вход по email и паролю",
+                "operationId": "authenticateUser",
+                "parameters": [
+                    {
+                        "description": "Учётные данные",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный JSON или отсутствующие поля",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Неверный email или пароль",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "PostgreSQL или Redis недоступны",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/deauthentication": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Отзывает всю сессию JWT в Redis: её access и refresh больше не принимаются. Другие сессии пользователя остаются активны. Тело запроса не требуется.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Выход из текущей сессии",
+                "operationId": "deauthenticateUser",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DeauthenticationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Токен отсутствует, истёк или отозван",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Redis недоступен",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/refresh": {
+            "post": {
+                "description": "Одноразовая ротация: refresh передаётся в JSON. Старая пара access/refresh сразу отзывается. Повторное использование старого refresh отклоняется. Текущая роль повторно читается из PostgreSQL.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Обновить пару JWT",
+                "operationId": "refreshUserTokens",
+                "parameters": [
+                    {
+                        "description": "Refresh-токен",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Некорректный JSON",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Refresh-токен истёк, отозван или уже использован",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "PostgreSQL или Redis недоступны",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.DeauthenticationResponse": {
+            "type": "object",
+            "required": [
+                "message"
+            ],
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "выход выполнен"
+                }
+            }
+        },
+        "dto.DeleteDepositMonthResponse": {
+            "type": "object",
+            "required": [
+                "id",
+                "status"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "deleted"
+                    ],
+                    "example": "deleted"
+                }
+            }
+        },
+        "dto.DepositMonthResponse": {
+            "type": "object",
+            "required": [
+                "created_at",
+                "days_count",
+                "description",
+                "formed_at",
+                "id",
+                "image_url",
+                "month_number",
+                "name",
+                "status",
+                "video_url"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-20T10:00:00Z"
+                },
+                "days_count": {
+                    "type": "integer",
+                    "x-nullable": true,
+                    "example": 31
+                },
+                "description": {
+                    "type": "string",
+                    "x-nullable": true,
+                    "example": "Расчёт за январь"
+                },
+                "formed_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true,
+                    "example": "2026-10-20T10:01:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "image_url": {
+                    "type": "string",
+                    "x-nullable": true,
+                    "example": "http://localhost:9000/deposit-months/deposit_month_1_image.jpg"
+                },
+                "month_number": {
+                    "type": "integer",
+                    "x-nullable": true,
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Январь"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "published",
+                        "deleted"
+                    ],
+                    "example": "published"
+                },
+                "video_url": {
+                    "type": "string",
+                    "x-nullable": true,
+                    "example": "http://localhost:9000/deposit-months/deposit_month_1_video.mp4"
+                }
+            }
+        },
+        "dto.DepositMonthWithLikesResponse": {
+            "type": "object",
+            "required": [
+                "created_at",
+                "days_count",
+                "description",
+                "formed_at",
+                "id",
+                "image_url",
+                "is_creator",
+                "is_liked",
+                "likes_count",
+                "month_number",
+                "name",
+                "status",
+                "video_url"
+            ],
+            "properties": {
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-20T10:00:00Z"
+                },
+                "days_count": {
+                    "type": "integer",
+                    "x-nullable": true,
+                    "example": 31
+                },
+                "description": {
+                    "type": "string",
+                    "x-nullable": true,
+                    "example": "Расчёт за январь"
+                },
+                "formed_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "x-nullable": true,
+                    "example": "2026-10-20T10:01:00Z"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "image_url": {
+                    "type": "string",
+                    "x-nullable": true,
+                    "example": "http://localhost:9000/deposit-months/deposit_month_1_image.jpg"
+                },
+                "is_creator": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ],
+                    "example": 1
+                },
+                "is_liked": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ],
+                    "example": 1
+                },
+                "likes_count": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "month_number": {
+                    "type": "integer",
+                    "x-nullable": true,
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Январь"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "draft",
+                        "published",
+                        "deleted"
+                    ],
+                    "example": "published"
+                },
+                "video_url": {
+                    "type": "string",
+                    "x-nullable": true,
+                    "example": "http://localhost:9000/deposit-months/deposit_month_1_video.mp4"
+                }
+            }
+        },
+        "dto.ErrorResponse": {
+            "type": "object",
+            "required": [
+                "error"
+            ],
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "черновик не найден"
+                }
+            }
+        },
+        "dto.LikeRequest": {
+            "type": "object",
+            "required": [
+                "liked"
+            ],
+            "properties": {
+                "liked": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ],
+                    "example": 1
+                }
+            }
+        },
+        "dto.LikeResponse": {
+            "type": "object",
+            "required": [
+                "id",
+                "likeCount",
+                "liked"
+            ],
+            "properties": {
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "likeCount": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "liked": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ],
+                    "example": 1
+                }
+            }
+        },
+        "dto.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "ivan@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "example": "example-password"
+                }
+            }
+        },
+        "dto.PublishDepositMonthRequest": {
+            "type": "object",
+            "required": [
+                "days_count",
+                "description",
+                "month_number",
+                "name"
+            ],
+            "properties": {
+                "days_count": {
+                    "type": "integer",
+                    "maximum": 31,
+                    "minimum": 28,
+                    "example": 31
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Расчёт за январь"
+                },
+                "month_number": {
+                    "type": "integer",
+                    "maximum": 12,
+                    "minimum": 1,
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Январь"
+                }
+            }
+        },
+        "dto.RefreshRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RegisterUserRequest": {
+            "type": "object",
+            "required": [
+                "birth_date",
+                "email",
+                "full_name",
+                "password"
+            ],
+            "properties": {
+                "birth_date": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2000-01-15"
+                },
+                "email": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "ivan@example.com"
+                },
+                "full_name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Иван Иванов"
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 72,
+                    "minLength": 8,
+                    "example": "example-password"
+                }
+            }
+        },
+        "dto.TokenResponse": {
+            "type": "object",
+            "required": [
+                "access_token",
+                "expires_in",
+                "is_moderator",
+                "refresh_expires_in",
+                "refresh_token",
+                "role",
+                "token_type",
+                "user_id"
+            ],
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer",
+                    "example": 900
+                },
+                "is_moderator": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "refresh_expires_in": {
+                    "type": "integer",
+                    "example": 604800
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "buyer",
+                        "manager",
+                        "admin"
+                    ],
+                    "example": "buyer"
+                },
+                "token_type": {
+                    "type": "string",
+                    "example": "Bearer"
+                },
+                "user_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "dto.UserResponse": {
+            "type": "object",
+            "required": [
+                "birth_date",
+                "email",
+                "full_name",
+                "id",
+                "role"
+            ],
+            "properties": {
+                "birth_date": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2000-01-15"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "ivan@example.com"
+                },
+                "full_name": {
+                    "type": "string",
+                    "example": "Иван Иванов"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "buyer",
+                        "manager",
+                        "admin"
+                    ],
+                    "example": "buyer"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "description": "Введите Bearer \u003caccess_token\u003e, полученный через POST /api/users/authentication. Refresh-токен передаётся только в JSON метода обновления.",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}
